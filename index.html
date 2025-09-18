@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>被遗弃的古宅 - 密室逃脱</title>
+    
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Creepster', cursive;
+            color: #eee;
+            background-color: #000;
+        }
+
+        #game-container {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #000;
+        }
+
+        .screen {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            background-color: rgba(0, 0, 0, 0.9);
+            transition: opacity 1s ease-in-out;
+            opacity: 0;
+            pointer-events: none;
+        }
+        .screen.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        #loading-screen p {
+            font-size: 2em;
+            margin-bottom: 20px;
+        }
+
+        #start-game-btn {
+            padding: 15px 30px;
+            font-size: 1.2em;
+            background-color: #8b0000;
+            color: #fff;
+            border: 2px solid #550000;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        #start-game-btn:hover {
+            background-color: #a00000;
+        }
+
+        .room {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            overflow: hidden;
+            background-size: cover;
+            background-position: center;
+            transition: opacity 1s ease-in-out;
+            opacity: 0;
+            pointer-events: none;
+        }
+        .room.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+#room-1 .room-bg {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background-image: url('img/room_bg.png'); /* 改成本地图片 */
+    background-size: cover;
+    background-position: center;
+    filter: brightness(0.5) contrast(1.2);
+}
+
+        .interactable {
+            position: absolute;
+            cursor: pointer;
+            border: 1px solid transparent;
+            box-sizing: border-box;
+            transition: border-color 0.2s ease;
+        }
+        .interactable:hover {
+            border-color: rgba(255, 255, 0, 0.5);
+        }
+
+        /* 物体位置示例 */
+        #fireplace { width: 20%; height: 30%; bottom: 10%; left: 25%; }
+        #sofa { width: 35%; height: 25%; bottom: 10%; right: 15%; }
+        #locked-door { width: 25%; height: 60%; top: 15%; right: 5%; }
+
+        #inventory {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 80px;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            box-sizing: border-box;
+            z-index: 100;
+        }
+        #inventory h3 {
+            margin: 0 20px 0 0;
+            font-size: 1.1em;
+            color: #ff0000;
+        }
+        #item-slots {
+            display: flex;
+            gap: 10px;
+        }
+        .inventory-item {
+            width: 60px;
+            height: 60px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+        }
+        .inventory-item img {
+            max-width: 90%;
+            max-height: 90%;
+            object-fit: contain;
+        }
+
+        #message-box {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80%;
+            max-width: 400px;
+            background-color: rgba(0, 0, 0, 0.9);
+            border: 2px solid #8b0000;
+            padding: 20px;
+            box-shadow: 0 0 20px rgba(255, 0, 0, 0.5);
+            z-index: 200;
+            text-align: center;
+        }
+        #message-box p { margin: 0 0 15px; }
+        #message-box #close-message {
+            position: absolute;
+            top: 5px;
+            right: 10px;
+            background: none;
+            border: none;
+            color: #ff0000;
+            font-size: 1.5em;
+            cursor: pointer;
+        }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div id="loading-screen" class="screen active">
+            <p>夜幕降临...</p>
+            <button id="start-game-btn">进入古宅</button>
+        </div>
+
+        <div id="game-screen" class="screen">
+            <div id="room-1" class="room">
+                <div class="room-bg"></div>
+                <img id="fireplace" class="interactable" src="img/alpha.png" alt="壁炉">
+                <img id="sofa" class="interactable" src="img/alpha.png" alt="旧沙发">
+                <img id="locked-door" class="interactable" src="img/alpha.png"alt="上锁的门">
+
+                <div id="inventory">
+                    <h3>道具</h3>
+                    <div id="item-slots"></div>
+                </div>
+
+                <div id="message-box" class="hidden">
+                    <p id="message-text"></p>
+                    <button id="close-message">X</button>
+                </div>
+            </div>
+        </div>
+    </div>
+<audio autoplay loop>
+  <source src="audio/bgm.mp3" type="audio/mpeg">
+  
+</audio>
+    <script>
+document.addEventListener('DOMContentLoaded', () => {
+    const loadingScreen = document.getElementById('loading-screen');
+    const startGameBtn = document.getElementById('start-game-btn');
+    const gameScreen = document.getElementById('game-screen');
+    const room1 = document.getElementById('room-1');
+
+    const fireplace = document.getElementById('fireplace');
+    const sofa = document.getElementById('sofa');
+    const lockedDoor = document.getElementById('locked-door');
+
+    const inventorySlots = document.getElementById('item-slots');
+    const messageBox = document.getElementById('message-box');
+    const messageText = document.getElementById('message-text');
+    const closeMessageBtn = document.getElementById('close-message');
+
+    const bgm = document.getElementById('bgm'); // 背景音乐
+
+    let inventory = {};
+    let hasFirePoker = false;
+    let hasKey = false;
+
+    function showScreen(screenId) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById(screenId).classList.add('active');
+    }
+    function showRoom(roomId) {
+        document.querySelectorAll('.room').forEach(r => r.classList.remove('active'));
+        document.getElementById(roomId).classList.add('active');
+    }
+    function showMessage(text) {
+        messageText.textContent = text;
+        messageBox.classList.remove('hidden');
+    }
+    function hideMessage() { messageBox.classList.add('hidden'); }
+
+    function addItemToInventory(id, name, imgSrc) {
+        if (inventory[id]) { showMessage(`你已经有了${name}。`); return; }
+        const item = { id, name, imgSrc };
+        inventory[id] = item;
+        renderInventory();
+        showMessage(`你找到了一个 ${name}！`);
+    }
+    function removeItemFromInventory(id) {
+        if (!inventory[id]) return;
+        delete inventory[id];
+        renderInventory();
+    }
+    function hasItem(id) { return !!inventory[id]; }
+    function renderInventory() {
+        inventorySlots.innerHTML = '';
+        for (const itemId in inventory) {
+            const item = inventory[itemId];
+            const itemDiv = document.createElement('div');
+            itemDiv.classList.add('inventory-item');
+            itemDiv.dataset.itemId = item.id;
+            itemDiv.innerHTML = `<img src="${item.imgSrc}" alt="${item.name}">`;
+            itemDiv.title = item.name;
+            itemDiv.addEventListener('click', () => {
+                showMessage(`你查看了道具：${item.name}`);
+            });
+            inventorySlots.appendChild(itemDiv);
+        }
+    }
+
+    // 点击“开始游戏”
+    startGameBtn.addEventListener('click', () => {
+        showScreen('game-screen');
+        showRoom('room-1');
+
+        // 播放 BGM 并淡入
+        bgm.volume = 0; // 初始静音
+        const playPromise = bgm.play();
+        if (playPromise !== undefined) {
+            playPromise.then(() => {
+                let vol = 0;
+                const fadeIn = setInterval(() => {
+                    vol += 0.01;
+                    if (vol >= 0.5) { // 最大音量 0.5，可调
+                        vol = 0.5;
+                        clearInterval(fadeIn);
+                    }
+                    bgm.volume = vol;
+                }, 100); // 每 100ms 增加 0.01
+            }).catch(err => {
+                console.log("BGM 播放失败，需要用户手动触发:", err);
+            });
+        }
+    });
+
+    closeMessageBtn.addEventListener('click', hideMessage);
+
+    fireplace.addEventListener('click', () => {
+        if (hasItem('firePoker')) {
+            if (!hasKey) {
+                removeItemFromInventory('firePoker');
+                addItemToInventory('oldKey', '老旧的钥匙', 'img/key.png');
+                hasKey = true;
+                showMessage('你用火钳从壁炉里取出了一个老旧的钥匙。');
+            } else {
+                showMessage('壁炉里没什么特别的了。');
+            }
+        } else {
+            showMessage('壁炉里可能藏着什么，但你够不到。也许需要一个工具？');
+        }
+    });
+    sofa.addEventListener('click', () => {
+        if (!hasFirePoker) {
+            addItemToInventory('firePoker', '生锈的火钳', 'img/fire.png');
+            hasFirePoker = true;
+            showMessage('你在沙发垫下发现了一根生锈的火钳！');
+        } else {
+            showMessage('沙发下没有什么了。');
+        }
+    });
+    lockedDoor.addEventListener('click', () => {
+        if (hasItem('oldKey')) {
+            showMessage('你用老旧的钥匙打开了门！你成功逃离了这个房间！(恭喜通关！)');
+        } else {
+            showMessage('门被锁住了，你需要一把钥匙。');
+        }
+    });
+
+    showScreen('loading-screen');
+});
+    </script>
+</body>
+</html>
