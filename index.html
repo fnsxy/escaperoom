@@ -81,6 +81,7 @@
     position: absolute;
     width: 100%;
     height: 100%;
+    background-repeat: no-repeat;
     background-image: url('img/room_bg.png'); /* 改成本地图片 */
     background-size: cover;
     background-position: center;
@@ -155,6 +156,11 @@
             z-index: 200;
             text-align: center;
         }
+        img {
+  max-width: 100%;   /* 不会超出屏幕 */
+  height: auto;      /* 按比例缩放 */
+  display: block;    /* 避免底部空隙 */
+}
         #message-box p { margin: 0 0 15px; }
         #message-box #close-message {
             position: absolute;
@@ -327,3 +333,4 @@ document.addEventListener('DOMContentLoaded', () => {
     </script>
 </body>
 </html>
+
